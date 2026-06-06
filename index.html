@@ -137,11 +137,12 @@
     </div>
 
     <script>
-        // 1. 🔍 SSO 機制：解析網址參數，記住是哪一個子系統（例如 A GAS）把使用者踢過來的
+        // 1. 🔍 SSO 解析核心：抓取是哪一個子系統（redirect）以及哪一個專案名稱（appName）呼叫中台的
         const urlParams = new URLSearchParams(window.location.search);
         const redirectTarget = urlParams.get('redirect'); 
+        const appName = urlParams.get('appName') || "未知的子系統"; // 🚀 接收子系統傳過來的專案名稱
 
-        // 2. 🔗 中央日誌 Web App 網址（負責背景悄悄寫入試算表留底）
+        // 2. 🔗 中央總日誌 Web App 網址（負責接收後端紀錄）
         const CENTRAL_LOG_GAS_URL = "https://script.google.com/macros/s/AKfycbzcnis1m2GrRmAy36jWa988AVRA3pdDoWYj4Vtwk3ShuosDKW9RngAmNw3Sk6yRvaEw0A/exec"; 
         let tokenClient;
 
@@ -195,23 +196,27 @@
                 });
                 const userInfo = await userInfoRes.json();
                 
-                // B. 發送給中央總日誌 GAS 寫入試算表留底（使用背景異步發送，不耽誤跳轉時間）
+                // B. 發送給中央總日誌 GAS 寫入試算表留底（包含 email, name 以及當前的 appName）
                 fetch(CENTRAL_LOG_GAS_URL, {
                     method: "POST",
                     mode: "cors", 
                     headers: { "Content-Type": "text/plain;charset=utf-8" },
-                    body: JSON.stringify({ email: userInfo.email, name: userInfo.name })
+                    body: JSON.stringify({ 
+                        email: userInfo.email, 
+                        name: userInfo.name,
+                        appName: appName // 🚀 完美同步寫入試算表第 4 欄
+                    })
                 }).catch(e => console.error("日誌紀錄失敗：", e));
 
                 // C. 彈出成功提示
                 alert(`【驗證成功】\n歡迎，${userInfo.name} 先生/女士\n驗證成功，即將為您導回系統...`);
                 
-                // D. 🚀【SSO 關鍵回傳】：如果當初有交代回程地址，將真實資料用 URL 參數打包遞送快遞回去！
+                // D. 🚀【萬用 SSO 回傳】：將真實資料與專案名稱一同打包，快遞導回發動的子系統！
                 if (redirectTarget) {
-                    window.location.href = `${redirectTarget}?email=${encodeURIComponent(userInfo.email)}&name=${encodeURIComponent(userInfo.name)}`;
+                    window.location.href = `${redirectTarget}?email=${encodeURIComponent(userInfo.email)}&name=${encodeURIComponent(userInfo.name)}&appName=${encodeURIComponent(appName)}`;
                 } else {
                     // 防呆：如果是直接點開 GitHub 門戶首頁（非外部系統對接）
-                    alert(`驗證完成！您的電子郵件為：${userInfo.email}`);
+                    alert(`驗證完成！歡迎使用文興高中整合服務。`);
                 }
 
             } catch (err) {
