@@ -117,7 +117,7 @@
     <div class="login-card">
         <h2>文興高中辨識使用者頁面</h2>
         <div class="subtitle">資訊服務整合驗證</div>
-        
+         
         <div class="notice-box">
             <strong>💡 系統提示：</strong><br>
             本服務僅供校內業務流程與相關使用者識別驗證。進行下一階段前，請務必閱讀並勾選同意下方的資安與隱私宣告。
@@ -127,7 +127,7 @@
             <input type="checkbox" id="agreeCheckbox" onchange="updateButtonStatus()">
             <span>我同意授權本系統取得我的 Google 基本資料（Email 與姓名）以進行身分驗證。</span>
         </label>
-        
+         
         <button id="submitBtn" class="custom-login-btn disabled" onclick="handleLoginClick()">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M12.24 10.285V13.4h6.887c-.275 1.565-1.88 4.604-6.887 4.604-4.33 0-7.866-3.577-7.866-8s3.536-8 7.866-8c2.46 0 4.105 1.025 5.047 1.926l2.427-2.334C17.955 2.192 15.34 1 12.24 1 6.033 1 1 6.033 1 12.24s5.033 11.24 11.24 11.24c6.478 0 10.793-4.537 10.793-10.986 0-.74-.08-1.305-.175-1.85H12.24z"/>
@@ -137,8 +137,12 @@
     </div>
 
     <script>
-        // ⚠️ 貼心提醒：請將下方網址替換為您從 GAS 取得的最新網頁應用程式網址！
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbzcnis1m2GrRmAy36jWa988AVRA3pdDoWYj4Vtwk3ShuosDKW9RngAmNw3Sk6yRvaEw0A/exec"; 
+        // 1. 🔍 核心機制：一進入網頁，立刻解析網址參數，檢查是不是其他子系統（如 A GAS）踢過來的
+        const urlParams = new URLSearchParams(window.location.search);
+        const redirectTarget = urlParams.get('redirect'); // 抓取要送回快遞的 A GAS 網址
+
+        // 中央總日誌 GAS 網址（依舊在後端默默記錄每一次登入）
+        const CENTRAL_LOG_GAS_URL = "https://script.google.com/macros/s/AKfycbzcnis1m2GrRmAy36jWa988AVRA3pdDoWYj4Vtwk3ShuosDKW9RngAmNw3Sk6yRvaEw0A/exec"; 
         let tokenClient;
 
         // 初始化 Token 視窗機制（天生免疫右上角 One Tap 氣泡提示）
@@ -185,33 +189,32 @@
             }
 
             try {
-                // 1. 拿著 Access Token 向 Google 換取真實使用者完整資料
+                // A. 拿著 Access Token 向 Google 換取真實使用者完整資料
                 const userInfoRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
                     headers: { "Authorization": `Bearer ${response.access_token}` }
                 });
                 const userInfo = await userInfoRes.json();
                 
-                // 2. 將包含真實姓名與 Email 的資料傳送給後端 GAS（完美解決跨域與未提供姓名問題）
-                const gasRes = await fetch(GAS_URL, {
+                // B. 發送給中央總日誌 GAS 寫入試算表留底（使用非同步背景發送，不阻礙轉址速度）
+                fetch(CENTRAL_LOG_GAS_URL, {
                     method: "POST",
-                    mode: "cors", // 啟用標準跨域，讓 GAS 能完整讀取 Body 內容
-                    headers: { 
-                        "Content-Type": "text/plain;charset=utf-8" // 避免預檢阻擋，同時完美支援中文姓名
-                    },
-                    body: JSON.stringify({ 
-                        email: userInfo.email, 
-                        name: userInfo.name 
-                    })
-                });
+                    mode: "cors", 
+                    headers: { "Content-Type": "text/plain;charset=utf-8" },
+                    body: JSON.stringify({ email: userInfo.email, name: userInfo.name })
+                }).catch(e => console.error("日誌紀錄失敗：", e));
 
-                const gasResult = await gasRes.json();
-
-                if (gasResult.status === "success") {
-                    // 3. 彈出帶有尊稱的完美成功提示
-                    alert(`【驗證成功】\n歡迎，${userInfo.name} 先生/女士\n資料已順利登錄，請前往下一階段。`);
+                // C. 彈出帶有尊稱的成功提示
+                alert(`【驗證成功】\n歡迎，${userInfo.name} 先生/女士\n驗證成功，即將為您導回系統...`);
+                
+                // D. 🚀【SSO 關鍵實現：打包快遞送回 A GAS】
+                if (redirectTarget) {
+                    // 如果當初 A GAS 有交代回程地址，原路把資料用 URL 參數打包遞送回去
+                    window.location.href = `${redirectTarget}?email=${encodeURIComponent(userInfo.email)}&name=${encodeURIComponent(userInfo.name)}`;
                 } else {
-                    alert(`【系統失敗】\n後端錯誤：${gasResult.message}`);
+                    // 防呆：如果是直接點開 GitHub 門戶首頁（不是子系統轉過來的）
+                    alert(`驗證完成！您的電子郵件為：${userInfo.email}`);
                 }
+
             } catch (err) {
                 alert("通訊失敗或後端未回應，請重新嘗試。");
                 console.error(err);
