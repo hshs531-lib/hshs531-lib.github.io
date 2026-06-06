@@ -11,7 +11,7 @@
             font-family: "PingFang TC", "Helvetica Neue", Helvetica, Arial, sans-serif;
             padding: 40px 20px;
             text-align: center;
-            background-color: #E6DDD4; 
+            background-color: #E6DDD4; /* 溫柔奶茶色基底 */
             color: #4A4A4A;
             margin: 0;
             display: flex;
@@ -20,7 +20,7 @@
             min-height: 80vh;
         }
 
-        /* 主卡片 */
+        /* 主卡片（帶有霧霾藍頂部飾條） */
         .login-card {
             background-color: #FFFFFF;
             padding: 40px;
@@ -29,12 +29,12 @@
             display: inline-block;
             max-width: 440px;
             width: 100%;
-            border-top: 8px solid #8499A6; /* 霧霾藍飾條 */
+            border-top: 8px solid #8499A6; /* 👈 補回：莫蘭迪霧霾藍飾條 */
             box-sizing: border-box;
         }
 
         h2 {
-            color: #4E5E6A; /* 深霧霾藍 */
+            color: #4E5E6A; /* 👈 補回：深霧霾藍標題色 */
             font-size: 24px;
             margin-top: 0;
             margin-bottom: 8px;
@@ -50,7 +50,7 @@
         /* 淺奶茶色提醒區塊 */
         .notice-box {
             background-color: #F4EFEA;
-            border-left: 4px solid #C4B5A5;
+            border-left: 4px solid #C4B5A5; /* 奶茶深色邊框 */
             padding: 15px;
             border-radius: 4px;
             text-align: left;
@@ -76,12 +76,12 @@
         .agree-container input {
             margin-top: 3px;
             margin-right: 10px;
-            accent-color: #8499A6;
+            accent-color: #8499A6; /* 勾選框指配霧霾藍 */
         }
 
-        /* 自訂莫蘭迪霧霾藍按鈕 */
+        /* 莫蘭迪霧霾藍自訂按鈕 */
         .custom-login-btn {
-            background-color: #8499A6; 
+            background-color: #8499A6; /* 👈 補回：高雅霧霾藍 */
             color: white;
             border: none;
             padding: 12px 28px;
@@ -97,12 +97,13 @@
             gap: 10px;
         }
 
+        /* 👈 補回：滑鼠懸停時的深霧霾藍優雅變色 */
         .custom-login-btn:hover {
             background-color: #6C7985; 
             box-shadow: 0 6px 12px rgba(108, 121, 133, 0.3);
         }
 
-        /* 未勾選時的按鈕樣式 */
+        /* 未勾選時的按鈕樣式（低飽和度灰奶茶色） */
         .custom-login-btn.disabled {
             background-color: #D1C7BD; 
             color: #F4EFEA;
@@ -139,7 +140,7 @@
         const GAS_URL = "https://script.google.com/macros/s/AKfycbzcnis1m2GrRmAy36jWa988AVRA3pdDoWYj4Vtwk3ShuosDKW9RngAmNw3Sk6yRvaEw0A/exec"; 
         let tokenClient;
 
-        // 💡 核心變革：初始化改用 Token 彈出視窗機制，這天生完全不具備 One Tap（右上角氣泡）功能
+        // 初始化 Token 視窗機制（天生免疫右上角 One Tap）
         window.onload = function() {
             if (window.google && google.accounts && google.accounts.oauth2) {
                 tokenClient = google.accounts.oauth2.initTokenClient({
@@ -150,7 +151,7 @@
             }
         };
 
-        // 即時動態改變自訂按鈕的視覺樣式
+        // 動態控制按鈕樣式
         function updateButtonStatus() {
             const isChecked = document.getElementById("agreeCheckbox").checked;
             const btn = document.getElementById("submitBtn");
@@ -161,7 +162,7 @@
             }
         }
 
-        // 處理按鈕點擊事件 (物理攔截)
+        // 物理點擊攔截
         function handleLoginClick() {
             const isChecked = document.getElementById("agreeCheckbox").checked;
             
@@ -170,26 +171,25 @@
                 return;
             }
             
-            // 👈 勾選同意後，直接彈出標準 Google 帳號選擇大視窗 (不經過右上角)
             if (tokenClient) {
                 tokenClient.requestAccessToken();
             }
         }
 
-        // 當使用者在標準彈出視窗選完帳號後，會觸發這個回呼
+        // 授權完畢回呼
         async function handleTokenResponse(response) {
             if (response.error !== undefined) {
                 return;
             }
 
             try {
-                // 拿著 Access Token 直接跟 Google 官方 API 換取乾淨的使用者資料 (免前端解碼)
+                // 換取真實使用者資料
                 const userInfoRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
                     headers: { "Authorization": `Bearer ${response.access_token}` }
                 });
                 const userInfo = await userInfoRes.json();
                 
-                // 將極其精確的姓名與 Email 送交 GAS
+                // 發送給後端 GAS
                 await fetch(GAS_URL, {
                     method: "POST",
                     mode: "no-cors",
