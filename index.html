@@ -20,14 +20,14 @@
             min-height: 80vh;
         }
 
-        /* 霧霾藍與白色交織的主卡片 */
+        /* 主卡片 */
         .login-card {
             background-color: #FFFFFF;
             padding: 40px;
             border-radius: 16px;
             box-shadow: 0 10px 25px rgba(108, 121, 133, 0.15);
             display: inline-block;
-            max-width: 420px;
+            max-width: 440px;
             width: 100%;
             border-top: 8px solid #8499A6; /* 霧霾藍飾條 */
             box-sizing: border-box;
@@ -47,10 +47,10 @@
             margin-bottom: 30px;
         }
 
-        /* 溫柔奶茶色提醒區塊 */
+        /* 淺奶茶色提醒區塊 */
         .notice-box {
-            background-color: #F4EFEA; /* 淺奶茶色 */
-            border-left: 4px solid #C4B5A5; /* 深奶茶色邊框 */
+            background-color: #F4EFEA;
+            border-left: 4px solid #C4B5A5;
             padding: 15px;
             border-radius: 4px;
             text-align: left;
@@ -70,39 +70,44 @@
             font-size: 14px;
             color: #555555;
             user-select: none;
+            text-align: left;
         }
 
         .agree-container input {
             margin-top: 3px;
             margin-right: 10px;
-            accent-color: #8499A6; /* 勾選框指配霧霾藍 */
+            accent-color: #8499A6;
         }
 
-        /* Google 按鈕遮罩（未同意前鎖定） */
+        /* 調整按鈕容器，包裹標準按鈕與遮罩 */
         .button-wrapper {
             position: relative;
             display: inline-block;
-            min-height: 40px;
+            width: 200px; /* 寬度與 Google 標準按鈕一致 */
+            height: 40px; /* 高度與 Google 標準按鈕一致 */
+            margin: 0 auto;
         }
 
+        /* 修正重疊：遮罩完美覆蓋在按鈕正上方 */
         .disabled-mask {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(255, 255, 255, 0.6);
+            background-color: #F4EFEA; /* 採用淺奶茶色，視覺更和諧 */
             cursor: not-allowed;
-            border-radius: 4px;
+            border-radius: 20px; /* 圓角微調與按鈕一致 */
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 13px;
-            color: #8499A6;
+            color: #7E8E9F;
             font-weight: bold;
             border: 1px dashed #8499A6;
             box-sizing: border-box;
-            transition: all 0.3s ease;
+            transition: all 0.2s ease-get;
+            z-index: 10; /* 確保疊在 Google 按鈕最上方 */
         }
 
         .hidden {
@@ -131,9 +136,10 @@
             <div id="g_id_onload"
                  data-client_id="410768828548-iu7vf6j90b338l6gfldpj7r0gflok45u.apps.googleusercontent.com"
                  data-callback="handleCredentialResponse"
-                 data-ux_mode="popup">
+                 data-ux_mode="popup"
+                 data-auto_select="false">
             </div>
-            <div class="g_id_signin" data-type="standard"></div>
+            <div class="g_id_signin" data-type="standard" data-shape="pill"></div>
             
             <div id="loginMask" class="disabled-mask">
                 請先勾選同意條款
@@ -144,14 +150,21 @@
     <script>
         const GAS_URL = "https://script.google.com/macros/s/AKfycbzcnis1m2GrRmAy36jWa988AVRA3pdDoWYj4Vtwk3ShuosDKW9RngAmNw3Sk6yRvaEw0A/exec"; 
 
+        // 頁面載入時，強制取消右上角的一鍵登入跳出
+        window.onload = function() {
+            if (window.google && google.accounts && google.accounts.id) {
+                google.accounts.id.cancel(); 
+            }
+        };
+
         // 控制登入按鈕的解鎖機制
         function toggleLoginButton() {
             const isChecked = document.getElementById("agreeCheckbox").checked;
             const mask = document.getElementById("loginMask");
             if (isChecked) {
-                mask.classList.add("hidden"); // 解鎖，隱藏遮罩
+                mask.classList.add("hidden"); // 解鎖
             } else {
-                mask.classList.remove("hidden"); // 重新鎖定
+                mask.classList.remove("hidden"); // 鎖定
             }
         }
 
@@ -176,7 +189,8 @@
                     headers: { "Content-Type": "text/plain" },
                     body: JSON.stringify({ email: payload.email, name: payload.name })
                 });
-                alert(`【驗證成功】\n歡迎，${payload.name} 同學/同仁\n資料已順利登錄，請前往下一階段。`);
+                // 👈 已更換為指定的提示語句（先生/女士）
+                alert(`【驗證成功】\n歡迎，${payload.name} 先生/女士\n資料已順利登錄，請前往下一階段。`);
             } catch (err) {
                 alert("通訊失敗，請重新嘗試。");
             }
