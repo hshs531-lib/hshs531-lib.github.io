@@ -29,12 +29,12 @@
             display: inline-block;
             max-width: 440px;
             width: 100%;
-            border-top: 8px solid #8499A6; /* 👈 補回：莫蘭迪霧霾藍飾條 */
+            border-top: 8px solid #8499A6; /* 莫蘭迪霧霾藍飾條 */
             box-sizing: border-box;
         }
 
         h2 {
-            color: #4E5E6A; /* 👈 補回：深霧霾藍標題色 */
+            color: #4E5E6A; /* 深霧霾藍標題色 */
             font-size: 24px;
             margin-top: 0;
             margin-bottom: 8px;
@@ -81,7 +81,7 @@
 
         /* 莫蘭迪霧霾藍自訂按鈕 */
         .custom-login-btn {
-            background-color: #8499A6; /* 👈 補回：高雅霧霾藍 */
+            background-color: #8499A6; /* 高雅霧霾藍 */
             color: white;
             border: none;
             padding: 12px 28px;
@@ -97,7 +97,7 @@
             gap: 10px;
         }
 
-        /* 👈 補回：滑鼠懸停時的深霧霾藍優雅變色 */
+        /* 滑鼠懸停時的深霧霾藍優雅變色 */
         .custom-login-btn:hover {
             background-color: #6C7985; 
             box-shadow: 0 6px 12px rgba(108, 121, 133, 0.3);
@@ -137,10 +137,11 @@
     </div>
 
     <script>
+        // 👈 請確保這是您最新的、執行身分為「我」、權限為「所有人」的 GAS Web App 網址！
         const GAS_URL = "https://script.google.com/macros/s/AKfycbzcnis1m2GrRmAy36jWa988AVRA3pdDoWYj4Vtwk3ShuosDKW9RngAmNw3Sk6yRvaEw0A/exec"; 
         let tokenClient;
 
-        // 初始化 Token 視窗機制（天生免疫右上角 One Tap）
+        // 初始化 Token 視窗機制（天生免疫右上角 One Tap 氣泡提示）
         window.onload = function() {
             if (window.google && google.accounts && google.accounts.oauth2) {
                 tokenClient = google.accounts.oauth2.initTokenClient({
@@ -151,7 +152,7 @@
             }
         };
 
-        // 動態控制按鈕樣式
+        // 動態控制中央按鈕外觀樣式
         function updateButtonStatus() {
             const isChecked = document.getElementById("agreeCheckbox").checked;
             const btn = document.getElementById("submitBtn");
@@ -162,7 +163,7 @@
             }
         }
 
-        // 物理點擊攔截
+        // 物理點擊攔截機制
         function handleLoginClick() {
             const isChecked = document.getElementById("agreeCheckbox").checked;
             
@@ -176,27 +177,31 @@
             }
         }
 
-        // 授權完畢回呼
+        // 授權完畢後的回呼處理
         async function handleTokenResponse(response) {
             if (response.error !== undefined) {
                 return;
             }
 
             try {
-                // 換取真實使用者資料
+                // 1. 拿著 Access Token 向 Google 換取真實使用者完整資料
                 const userInfoRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
                     headers: { "Authorization": `Bearer ${response.access_token}` }
                 });
                 const userInfo = await userInfoRes.json();
                 
-                // 發送給後端 GAS
+                // 2. 將包含真實姓名 (userInfo.name) 與真實 Email (userInfo.email) 的資料包傳送給後端 GAS
                 await fetch(GAS_URL, {
                     method: "POST",
                     mode: "no-cors",
                     headers: { "Content-Type": "text/plain" },
-                    body: JSON.stringify({ email: userInfo.email, name: userInfo.name })
+                    body: JSON.stringify({ 
+                        email: userInfo.email, 
+                        name: userInfo.name 
+                    })
                 });
 
+                // 3. 彈出帶有尊稱的完美成功提示
                 alert(`【驗證成功】\n歡迎，${userInfo.name} 先生/女士\n資料已順利登錄，請前往下一階段。`);
             } catch (err) {
                 alert("通訊失敗，請重新嘗試。");
