@@ -79,9 +79,9 @@
             accent-color: #8499A6;
         }
 
-        /* 自訂莫蘭迪霧霾藍按鈕 (完全受我們控制，絕不走位) */
+        /* 自訂莫蘭迪霧霾藍按鈕 */
         .custom-login-btn {
-            background-color: #8499A6; /* 霧霾藍 */
+            background-color: #8499A6; 
             color: white;
             border: none;
             padding: 12px 28px;
@@ -98,27 +98,20 @@
         }
 
         .custom-login-btn:hover {
-            background-color: #6C7985; /* 深霧霾藍 */
+            background-color: #6C7985; 
             box-shadow: 0 6px 12px rgba(108, 121, 133, 0.3);
         }
 
-        /* 未勾選時的按鈕樣式 (變成淡淡灰色) */
+        /* 未勾選時的按鈕樣式 */
         .custom-login-btn.disabled {
-            background-color: #D1C7BD; /* 灰奶茶色 */
+            background-color: #D1C7BD; 
             color: #F4EFEA;
             box-shadow: none;
             cursor: not-allowed;
         }
-
-        /* 隱藏 Google 官方原生按鈕骨架，只借用它的背後 SDK */
-        #g_id_onload {
-            display: none;
-        }
     </style>
 </head>
 <body>
-
-    <div id="g_id_onload"></div>
 
     <div class="login-card">
         <h2>文興高中辨識使用者頁面</h2>
@@ -144,19 +137,16 @@
 
     <script>
         const GAS_URL = "https://script.google.com/macros/s/AKfycbzcnis1m2GrRmAy36jWa988AVRA3pdDoWYj4Vtwk3ShuosDKW9RngAmNw3Sk6yRvaEw0A/exec"; 
+        let tokenClient;
 
-        // 核心修正：利用純 JS 初始化，並強制不顯示右上角 One Tap 提示
+        // 💡 核心變革：初始化改用 Token 彈出視窗機制，這天生完全不具備 One Tap（右上角氣泡）功能
         window.onload = function() {
-            if (window.google && google.accounts && google.accounts.id) {
-                google.accounts.id.initialize({
+            if (window.google && google.accounts && google.accounts.oauth2) {
+                tokenClient = google.accounts.oauth2.initTokenClient({
                     client_id: "410768828548-iu7vf6j90b338l6gfldpj7r0gflok45u.apps.googleusercontent.com",
-                    callback: handleCredentialResponse,
-                    ux_mode: "popup",
-                    auto_select: false // 關閉自動選擇
+                    scope: "https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email",
+                    callback: handleTokenResponse
                 });
-                
-                // 👈 終極大絕招：明確告訴 SDK，不要跳出右上角一鍵登入氣泡 (One Tap)
-                google.accounts.id.cancel(); 
             }
         };
 
@@ -176,42 +166,38 @@
             const isChecked = document.getElementById("agreeCheckbox").checked;
             
             if (!isChecked) {
-                // 如果沒勾選，直接跳出警告，並且絕對不執行登入流程！
                 alert("【系統提示】\n請先閱讀並勾選同意授權方可進行下一階段。");
                 return;
             }
             
-            // 如果勾選了，才用 JS 程式碼主動喚起 Google 登入視窗 (Popup)
-            google.accounts.id.prompt((notification) => {
-                if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-                    // 如果被瀏覽器阻擋，強迫再次彈出
-                    google.accounts.id.prompt();
-                }
-            });
+            // 👈 勾選同意後，直接彈出標準 Google 帳號選擇大視窗 (不經過右上角)
+            if (tokenClient) {
+                tokenClient.requestAccessToken();
+            }
         }
 
-        // 解碼 Token
-        function decodeJwt(token) {
-            const base64Url = token.split('.')[1];
-            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-            const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
-                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-            }).join(''));
-            return JSON.parse(jsonPayload);
-        }
+        // 當使用者在標準彈出視窗選完帳號後，會觸發這個回呼
+        async function handleTokenResponse(response) {
+            if (response.error !== undefined) {
+                return;
+            }
 
-        // 登入成功處理
-        async function handleCredentialResponse(response) {
-            const payload = decodeJwt(response.credential);
-            
             try {
+                // 拿著 Access Token 直接跟 Google 官方 API 換取乾淨的使用者資料 (免前端解碼)
+                const userInfoRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+                    headers: { "Authorization": `Bearer ${response.access_token}` }
+                });
+                const userInfo = await userInfoRes.json();
+                
+                // 將極其精確的姓名與 Email 送交 GAS
                 await fetch(GAS_URL, {
                     method: "POST",
                     mode: "no-cors",
                     headers: { "Content-Type": "text/plain" },
-                    body: JSON.stringify({ email: payload.email, name: payload.name })
+                    body: JSON.stringify({ email: userInfo.email, name: userInfo.name })
                 });
-                alert(`【驗證成功】\n歡迎，${payload.name} 先生/女士\n資料已順利登錄，請前往下一階段。`);
+
+                alert(`【驗證成功】\n歡迎，${userInfo.name} 先生/女士\n資料已順利登錄，請前往下一階段。`);
             } catch (err) {
                 alert("通訊失敗，請重新嘗試。");
             }
