@@ -120,7 +120,7 @@
          
         <div class="notice-box">
             <strong>💡 系統提示：</strong><br>
-            本服務僅供校內业务流程與相關使用者識別驗證。進行下一階段前，請務必閱讀並勾選同意下方的資安與隱私宣告。
+            本服務僅供校內業務流程與相關使用者識別驗證。進行下一階段前，請務必閱讀並勾選同意下方的資安與隱私宣告。
         </div>
 
         <label class="agree-container">
@@ -137,10 +137,9 @@
     </div>
 
     <script>
-        // 1. 🔍 SSO 解析核心：抓取是哪一個子系統網址（redirect）以及哪一個專案名稱（appName）呼叫中台的
+        // 1. 🔍 純淨中轉核心：只抓取是哪一個子系統網址（redirect）呼叫中台的，完全不理會專案名稱
         const urlParams = new URLSearchParams(window.location.search);
         const redirectTarget = urlParams.get('redirect'); 
-        const appName = urlParams.get('appName') || "未知的子系統"; // 接收子系統傳過來的專案名稱
 
         let tokenClient;
 
@@ -193,18 +192,15 @@
                     headers: { "Authorization": `Bearer ${response.access_token}` }
                 });
                 const userInfo = await userInfoRes.json();
-                
-                // 💡 註備：此處已完全拔除背景前端 POST 傳輸，100% 避免試算表重複登錄。
-                // 歷史寫入日誌與呈現功能已全面改由子系統後端「doGet 雙重保險機制」一條龍處理。
 
                 // B. 彈出成功提示
                 alert(`【驗證成功】\n歡迎，${userInfo.name} 先生/女士\n驗證成功，即將為您導回系統...`);
                 
-                // C. 🚀【萬用 SSO 回傳】：將真實資料與專案名稱一同打包，快遞重導向回發動的子系統！
+                // C. 🚀【萬用純淨回傳】：去除了舊有 appName 參數，只將最核心的 email 與 name 拋回子系統！
                 if (redirectTarget) {
-                    window.location.href = `${redirectTarget}?email=${encodeURIComponent(userInfo.email)}&name=${encodeURIComponent(userInfo.name)}&appName=${encodeURIComponent(appName)}`;
+                    window.location.href = `${redirectTarget}?email=${encodeURIComponent(userInfo.email)}&name=${encodeURIComponent(userInfo.name)}`;
                 } else {
-                    // 防呆：如果是直接點開 GitHub 門戶首頁（非子系統跳轉對接）
+                    // 防呆：如果是直接點開 GitHub 門戶首頁
                     alert(`驗證完成！歡迎使用文興高中整合服務。`);
                 }
 
