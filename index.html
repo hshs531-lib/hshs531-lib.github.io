@@ -137,11 +137,11 @@
     </div>
 
     <script>
-        // 1. 🔍 核心機制：一進入網頁，立刻解析網址參數，檢查是不是其他子系統（如 A GAS）踢過來的
+        // 1. 🔍 SSO 機制：解析網址參數，記住是哪一個子系統（例如 A GAS）把使用者踢過來的
         const urlParams = new URLSearchParams(window.location.search);
-        const redirectTarget = urlParams.get('redirect'); // 抓取要送回快遞的 A GAS 網址
+        const redirectTarget = urlParams.get('redirect'); 
 
-        // 中央總日誌 GAS 網址（依舊在後端默默記錄每一次登入）
+        // 2. 🔗 中央日誌 Web App 網址（負責背景悄悄寫入試算表留底）
         const CENTRAL_LOG_GAS_URL = "https://script.google.com/macros/s/AKfycbzcnis1m2GrRmAy36jWa988AVRA3pdDoWYj4Vtwk3ShuosDKW9RngAmNw3Sk6yRvaEw0A/exec"; 
         let tokenClient;
 
@@ -195,7 +195,7 @@
                 });
                 const userInfo = await userInfoRes.json();
                 
-                // B. 發送給中央總日誌 GAS 寫入試算表留底（使用非同步背景發送，不阻礙轉址速度）
+                // B. 發送給中央總日誌 GAS 寫入試算表留底（使用背景異步發送，不耽誤跳轉時間）
                 fetch(CENTRAL_LOG_GAS_URL, {
                     method: "POST",
                     mode: "cors", 
@@ -203,15 +203,14 @@
                     body: JSON.stringify({ email: userInfo.email, name: userInfo.name })
                 }).catch(e => console.error("日誌紀錄失敗：", e));
 
-                // C. 彈出帶有尊稱的成功提示
+                // C. 彈出成功提示
                 alert(`【驗證成功】\n歡迎，${userInfo.name} 先生/女士\n驗證成功，即將為您導回系統...`);
                 
-                // D. 🚀【SSO 關鍵實現：打包快遞送回 A GAS】
+                // D. 🚀【SSO 關鍵回傳】：如果當初有交代回程地址，將真實資料用 URL 參數打包遞送快遞回去！
                 if (redirectTarget) {
-                    // 如果當初 A GAS 有交代回程地址，原路把資料用 URL 參數打包遞送回去
                     window.location.href = `${redirectTarget}?email=${encodeURIComponent(userInfo.email)}&name=${encodeURIComponent(userInfo.name)}`;
                 } else {
-                    // 防呆：如果是直接點開 GitHub 門戶首頁（不是子系統轉過來的）
+                    // 防呆：如果是直接點開 GitHub 門戶首頁（非外部系統對接）
                     alert(`驗證完成！您的電子郵件為：${userInfo.email}`);
                 }
 
