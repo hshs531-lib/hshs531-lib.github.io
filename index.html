@@ -137,7 +137,7 @@
     </div>
 
     <script>
-        // 👈 請確保這是您最新的、執行身分為「我」、權限為「所有人」的 GAS Web App 網址！
+        // ⚠️ 貼心提醒：請將下方網址替換為您從 GAS 取得的最新網頁應用程式網址！
         const GAS_URL = "https://script.google.com/macros/s/AKfycbzcnis1m2GrRmAy36jWa988AVRA3pdDoWYj4Vtwk3ShuosDKW9RngAmNw3Sk6yRvaEw0A/exec"; 
         let tokenClient;
 
@@ -180,6 +180,7 @@
         // 授權完畢後的回呼處理
         async function handleTokenResponse(response) {
             if (response.error !== undefined) {
+                alert("授權失敗，使用者取消或發生錯誤。");
                 return;
             }
 
@@ -190,21 +191,30 @@
                 });
                 const userInfo = await userInfoRes.json();
                 
-                // 2. 將包含真實姓名 (userInfo.name) 與真實 Email (userInfo.email) 的資料包傳送給後端 GAS
-                await fetch(GAS_URL, {
+                // 2. 將包含真實姓名與 Email 的資料傳送給後端 GAS（完美解決跨域與未提供姓名問題）
+                const gasRes = await fetch(GAS_URL, {
                     method: "POST",
-                    mode: "no-cors",
-                    headers: { "Content-Type": "text/plain" },
+                    mode: "cors", // 啟用標準跨域，讓 GAS 能完整讀取 Body 內容
+                    headers: { 
+                        "Content-Type": "text/plain;charset=utf-8" // 避免預檢阻擋，同時完美支援中文姓名
+                    },
                     body: JSON.stringify({ 
                         email: userInfo.email, 
                         name: userInfo.name 
                     })
                 });
 
-                // 3. 彈出帶有尊稱的完美成功提示
-                alert(`【驗證成功】\n歡迎，${userInfo.name} 先生/女士\n資料已順利登錄，請前往下一階段。`);
+                const gasResult = await gasRes.json();
+
+                if (gasResult.status === "success") {
+                    // 3. 彈出帶有尊稱的完美成功提示
+                    alert(`【驗證成功】\n歡迎，${userInfo.name} 先生/女士\n資料已順利登錄，請前往下一階段。`);
+                } else {
+                    alert(`【系統失敗】\n後端錯誤：${gasResult.message}`);
+                }
             } catch (err) {
-                alert("通訊失敗，請重新嘗試。");
+                alert("通訊失敗或後端未回應，請重新嘗試。");
+                console.error(err);
             }
         }
     </script>
