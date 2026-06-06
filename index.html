@@ -11,7 +11,7 @@
             font-family: "PingFang TC", "Helvetica Neue", Helvetica, Arial, sans-serif;
             padding: 40px 20px;
             text-align: center;
-            background-color: #E6DDD4; /* 奶茶色基底 */
+            background-color: #E6DDD4; 
             color: #4A4A4A;
             margin: 0;
             display: flex;
@@ -79,44 +79,46 @@
             accent-color: #8499A6;
         }
 
-        /* 調整按鈕容器，包裹標準按鈕與遮罩 */
-        .button-wrapper {
-            position: relative;
-            display: inline-block;
-            width: 200px; /* 寬度與 Google 標準按鈕一致 */
-            height: 40px; /* 高度與 Google 標準按鈕一致 */
-            margin: 0 auto;
-        }
-
-        /* 修正重疊：遮罩完美覆蓋在按鈕正上方 */
-        .disabled-mask {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: #F4EFEA; /* 採用淺奶茶色，視覺更和諧 */
-            cursor: not-allowed;
-            border-radius: 20px; /* 圓角微調與按鈕一致 */
-            display: flex;
+        /* 自訂莫蘭迪霧霾藍按鈕 (完全受我們控制，絕不走位) */
+        .custom-login-btn {
+            background-color: #8499A6; /* 霧霾藍 */
+            color: white;
+            border: none;
+            padding: 12px 28px;
+            font-size: 15px;
+            font-weight: bold;
+            border-radius: 24px;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(132, 153, 166, 0.2);
+            transition: all 0.3s ease;
+            display: inline-flex;
             align-items: center;
             justify-content: center;
-            font-size: 13px;
-            color: #7E8E9F;
-            font-weight: bold;
-            border: 1px dashed #8499A6;
-            box-sizing: border-box;
-            transition: all 0.2s ease-get;
-            z-index: 10; /* 確保疊在 Google 按鈕最上方 */
+            gap: 10px;
         }
 
-        .hidden {
-            opacity: 0;
-            pointer-events: none;
+        .custom-login-btn:hover {
+            background-color: #6C7985; /* 深霧霾藍 */
+            box-shadow: 0 6px 12px rgba(108, 121, 133, 0.3);
+        }
+
+        /* 未勾選時的按鈕樣式 (變成淡淡灰色) */
+        .custom-login-btn.disabled {
+            background-color: #D1C7BD; /* 灰奶茶色 */
+            color: #F4EFEA;
+            box-shadow: none;
+            cursor: not-allowed;
+        }
+
+        /* 隱藏 Google 官方原生按鈕骨架，只借用它的背後 SDK */
+        #g_id_onload {
+            display: none;
         }
     </style>
 </head>
 <body>
+
+    <div id="g_id_onload"></div>
 
     <div class="login-card">
         <h2>文興高中辨識使用者頁面</h2>
@@ -128,44 +130,64 @@
         </div>
 
         <label class="agree-container">
-            <input type="checkbox" id="agreeCheckbox" onchange="toggleLoginButton()">
+            <input type="checkbox" id="agreeCheckbox" onchange="updateButtonStatus()">
             <span>我同意授權本系統取得我的 Google 基本資料（Email 與姓名）以進行身分驗證。</span>
         </label>
         
-        <div class="button-wrapper">
-            <div id="g_id_onload"
-                 data-client_id="410768828548-iu7vf6j90b338l6gfldpj7r0gflok45u.apps.googleusercontent.com"
-                 data-callback="handleCredentialResponse"
-                 data-ux_mode="popup"
-                 data-auto_select="false">
-            </div>
-            <div class="g_id_signin" data-type="standard" data-shape="pill"></div>
-            
-            <div id="loginMask" class="disabled-mask">
-                請先勾選同意條款
-            </div>
-        </div>
+        <button id="submitBtn" class="custom-login-btn disabled" onclick="handleLoginClick()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12.24 10.285V13.4h6.887c-.275 1.565-1.88 4.604-6.887 4.604-4.33 0-7.866-3.577-7.866-8s3.536-8 7.866-8c2.46 0 4.105 1.025 5.047 1.926l2.427-2.334C17.955 2.192 15.34 1 12.24 1 6.033 1 1 6.033 1 12.24s5.033 11.24 11.24 11.24c6.478 0 10.793-4.537 10.793-10.986 0-.74-.08-1.305-.175-1.85H12.24z"/>
+            </svg>
+            使用 Google 帳號登入
+        </button>
     </div>
 
     <script>
         const GAS_URL = "https://script.google.com/macros/s/AKfycbzcnis1m2GrRmAy36jWa988AVRA3pdDoWYj4Vtwk3ShuosDKW9RngAmNw3Sk6yRvaEw0A/exec"; 
 
-        // 頁面載入時，強制取消右上角的一鍵登入跳出
+        // 核心修正：利用純 JS 初始化，並強制不顯示右上角 One Tap 提示
         window.onload = function() {
             if (window.google && google.accounts && google.accounts.id) {
+                google.accounts.id.initialize({
+                    client_id: "410768828548-iu7vf6j90b338l6gfldpj7r0gflok45u.apps.googleusercontent.com",
+                    callback: handleCredentialResponse,
+                    ux_mode: "popup",
+                    auto_select: false // 關閉自動選擇
+                });
+                
+                // 👈 終極大絕招：明確告訴 SDK，不要跳出右上角一鍵登入氣泡 (One Tap)
                 google.accounts.id.cancel(); 
             }
         };
 
-        // 控制登入按鈕的解鎖機制
-        function toggleLoginButton() {
+        // 即時動態改變自訂按鈕的視覺樣式
+        function updateButtonStatus() {
             const isChecked = document.getElementById("agreeCheckbox").checked;
-            const mask = document.getElementById("loginMask");
+            const btn = document.getElementById("submitBtn");
             if (isChecked) {
-                mask.classList.add("hidden"); // 解鎖
+                btn.classList.remove("disabled");
             } else {
-                mask.classList.remove("hidden"); // 鎖定
+                btn.classList.add("disabled");
             }
+        }
+
+        // 處理按鈕點擊事件 (物理攔截)
+        function handleLoginClick() {
+            const isChecked = document.getElementById("agreeCheckbox").checked;
+            
+            if (!isChecked) {
+                // 如果沒勾選，直接跳出警告，並且絕對不執行登入流程！
+                alert("【系統提示】\n請先閱讀並勾選同意授權方可進行下一階段。");
+                return;
+            }
+            
+            // 如果勾選了，才用 JS 程式碼主動喚起 Google 登入視窗 (Popup)
+            google.accounts.id.prompt((notification) => {
+                if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+                    // 如果被瀏覽器阻擋，強迫再次彈出
+                    google.accounts.id.prompt();
+                }
+            });
         }
 
         // 解碼 Token
@@ -189,7 +211,6 @@
                     headers: { "Content-Type": "text/plain" },
                     body: JSON.stringify({ email: payload.email, name: payload.name })
                 });
-                // 👈 已更換為指定的提示語句（先生/女士）
                 alert(`【驗證成功】\n歡迎，${payload.name} 先生/女士\n資料已順利登錄，請前往下一階段。`);
             } catch (err) {
                 alert("通訊失敗，請重新嘗試。");
